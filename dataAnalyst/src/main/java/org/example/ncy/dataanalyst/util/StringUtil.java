@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 /**
  * 类:  <code> StringUtil </code>
  * 功能描述: String字符串操作工具栏
- * 创建人:
+ * 创建人:lqn
  * 创建日期: Apr 1, 2013 7:21:47 PM
  * 开发环境: JDK7.0
  */
