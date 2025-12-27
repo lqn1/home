@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>H2 测试页面</title>
+</head>
+<body>
+<h1 th:text="${message}">默认消息</h1>
+
+<a href="/h2-test">添加测试数据</a>
+<br>
+<a href="/h2-console" target="_blank">打开 H2 控制台</a>
+
+<h2>用户列表：</h2>
+<ul>
+    <li th:each="user : ${users}">
+        <span th:text="${user.username}">用户名</span> -
+        <span th:text="${user.email}">邮箱</span>
+    </li>
+</ul>
+</body>
+</html>

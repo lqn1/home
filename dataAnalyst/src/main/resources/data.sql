@@ -1,0 +1,1 @@
+INSERT INTO logininfo (logintime) VALUES(left(now(),19));

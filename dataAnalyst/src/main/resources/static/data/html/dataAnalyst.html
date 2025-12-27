@@ -1,0 +1,2214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件管理系统</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ===== 左侧导航栏样式 ===== */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: #ecf0f1;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+
+        .sidebar.collapsed {
+            width: 60px;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: #ecf0f1;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-content {
+            padding: 15px 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .folder-list {
+            list-style: none;
+        }
+
+        .folder-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            border-left: 3px solid transparent;
+        }
+
+        .folder-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .folder-item.active {
+            background: rgba(52, 152, 219, 0.2);
+            border-left-color: #3498db;
+        }
+
+        .folder-icon {
+            margin-right: 12px;
+            font-size: 1.1rem;
+            width: 20px;
+            text-align: center;
+        }
+
+        .folder-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar.collapsed .folder-name,
+        .sidebar.collapsed .sidebar-header h2 {
+            display: none;
+        }
+
+        .add-folder-btn {
+            margin: 15px 20px;
+            padding: 10px;
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px dashed rgba(46, 204, 113, 0.5);
+            color: #2ecc71;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .add-folder-btn:hover {
+            background: rgba(46, 204, 113, 0.3);
+        }
+
+        .add-folder-btn i {
+            margin-right: 8px;
+        }
+
+        .sidebar.collapsed .add-folder-btn span {
+            display: none;
+        }
+
+        /* ===== 右侧内容区域样式 ===== */
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .breadcrumb {
+            padding: 15px 20px;
+            background: #fff;
+            border-bottom: 1px solid #eaeaea;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+        }
+
+        .breadcrumb-item {
+            display: flex;
+            align-items: center;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .breadcrumb-item a {
+            color: #3498db;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .breadcrumb-item a:hover {
+            color: #2980b9;
+        }
+
+        .breadcrumb-separator {
+            margin: 0 10px;
+            color: #bdc3c7;
+        }
+
+        .back-btn {
+            background: #95a5a6;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        .back-btn:hover {
+            background: #7f8c8d;
+        }
+
+        .back-btn i {
+            margin-right: 5px;
+        }
+
+        .content-header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .content-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .content-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* 视图控制按钮 */
+        .view-controls {
+            display: flex;
+            gap: 5px;
+            margin-right: 15px;
+            border-right: 1px solid #eaeaea;
+            padding-right: 15px;
+        }
+
+        .view-btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #6c757d;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .view-btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .view-btn.active {
+            background: #007bff;
+            border-color: #007bff;
+            color: white;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-success {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #27ae60;
+        }
+
+        .btn i {
+            margin-right: 5px;
+        }
+
+        /* 大小控制面板 */
+        .size-controls {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eaeaea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .size-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .size-slider {
+            width: 150px;
+            height: 6px;
+            border-radius: 3px;
+            background: #dee2e6;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .size-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .size-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .size-value {
+            font-size: 0.9rem;
+            color: #495057;
+            font-weight: 500;
+            min-width: 40px;
+        }
+
+        .content-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* ===== 网格视图样式 ===== */
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(var(--item-size, 180px), 1fr));
+            gap: 20px;
+        }
+
+        .file-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid #eaeaea;
+            width: var(--item-size, 180px);
+            height: var(--item-size, 180px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .file-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border-color: #3498db;
+        }
+
+        .file-icon {
+            font-size: calc(var(--item-size, 180px) * 0.3);
+            margin-bottom: 10px;
+            color: #3498db;
+        }
+
+        .file-icon.fa-folder {
+            color: #f39c12;
+        }
+
+        .file-icon.fa-file-excel {
+            color: #27ae60;
+        }
+
+        .file-name {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        /* ===== 列表视图样式 ===== */
+        .file-list {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            transform: scale(0.95);
+            transform-origin: top center;
+        }
+
+        .file-list .file-item {
+            width: 100%;
+            height: auto;
+            min-height: 35px;
+            flex-direction: row;
+            justify-content: flex-start;
+            text-align: left;
+            padding: 6px 10px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            font-size: 0.9em;
+        }
+
+        .file-list .file-item:hover {
+            background: #e3f2fd;
+            transform: translateX(3px) scale(1.02);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .file-list .file-icon {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+            margin-right: 8px;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .file-list .file-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        .file-list .file-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .file-list .file-meta {
+            display: flex;
+            gap: 8px;
+            font-size: 0.7rem;
+            color: #7f8c8d;
+        }
+
+        .file-list .file-size {
+            color: #3498db;
+            font-weight: 500;
+        }
+
+        .file-list .file-date {
+            color: #95a5a6;
+        }
+
+        .file-list .file-type {
+            color: #e74c3c;
+            text-transform: uppercase;
+            font-size: 0.6rem;
+            font-weight: 600;
+        }
+
+        .file-list .file-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            align-items: center;
+        }
+
+        .file-list .file-item:hover .file-actions {
+            opacity: 1;
+        }
+
+        .file-list .action-btn {
+            background: none;
+            border: none;
+            color: #7f8c8d;
+            cursor: pointer;
+            padding: 3px;
+            border-radius: 3px;
+            transition: all 0.3s;
+            font-size: 0.7rem;
+        }
+
+        .file-list .action-btn:hover {
+            background: #f8f9fa;
+            color: #3498db;
+        }
+
+        /* ===== 状态样式 ===== */
+        .empty-state, .loading, .error-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+        }
+
+        .empty-state i, .error-state i {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+
+        .loading i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+
+        .error-state {
+            color: #e74c3c;
+        }
+
+        .error-state i {
+            color: #e74c3c;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ===== 模态框样式 ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eaeaea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eaeaea;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        /* ===== 响应式设计 ===== */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                height: 100%;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .content {
+                width: 100%;
+            }
+
+            .file-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+
+            .view-controls {
+                margin-right: 10px;
+                padding-right: 10px;
+            }
+
+            .size-controls {
+                padding: 8px 15px;
+            }
+
+            .size-slider {
+                width: 120px;
+            }
+
+            .file-list {
+                gap: 3px;
+                transform: scale(0.9);
+            }
+
+            .file-list .file-item {
+                min-height: 30px;
+                padding: 4px 8px;
+                font-size: 0.8em;
+            }
+
+            .file-list .file-icon {
+                font-size: 0.8rem;
+                margin-right: 6px;
+                width: 18px;
+            }
+
+            .file-list .file-name {
+                font-size: 0.75rem;
+            }
+
+            .file-list .file-meta {
+                font-size: 0.6rem;
+                gap: 6px;
+            }
+
+            .file-list .action-btn {
+                padding: 2px;
+                font-size: 0.6rem;
+            }
+        }
+
+        /* ===== 动画效果 ===== */
+        @keyframes listItemAppear {
+            from {
+                opacity: 0;
+                transform: translateX(-10px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0) scale(0.95);
+            }
+        }
+
+        .file-list .file-item {
+            animation: listItemAppear 0.3s ease-out;
+        }
+
+        .file-list .file-item:nth-child(1) { animation-delay: 0.05s; }
+        .file-list .file-item:nth-child(2) { animation-delay: 0.1s; }
+        .file-list .file-item:nth-child(3) { animation-delay: 0.15s; }
+        .file-list .file-item:nth-child(4) { animation-delay: 0.2s; }
+        .file-list .file-item:nth-child(5) { animation-delay: 0.25s; }
+        .file-list .file-item:nth-child(n+6) { animation-delay: 0.3s; }
+
+        /* ===== 滚动条样式 ===== */
+        .content-body::-webkit-scrollbar,
+        .file-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .content-body::-webkit-scrollbar-track,
+        .file-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .content-body::-webkit-scrollbar-thumb,
+        .file-list::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 2px;
+        }
+
+        .content-body::-webkit-scrollbar-thumb:hover,
+        .file-list::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* ===== 变量定义 ===== */
+        :root {
+            --item-size: 180px;
+        }
+        /* 确保文件名字体大小可以被JavaScript覆盖 */
+        .file-name {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            /* 移除固定的字体大小，让JavaScript控制 */
+        }
+
+        .file-item {
+            /* 移除固定的字体大小，让JavaScript控制 */
+            transition: all 0.3s;
+        }
+
+        /* 为不同的项目大小范围设置不同的最小字体 */
+        @media (max-width: 768px) {
+            .file-grid .file-name {
+                font-size: 10px !important; /* 移动端最小字体 */
+            }
+        }
+        /* 列表视图样式 - 无动画版本 */
+        .file-list {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            transform: scale(0.95);
+            transform-origin: top center;
+        }
+
+        .file-list .file-item {
+            width: 100%;
+            height: auto;
+            min-height: 35px;
+            flex-direction: row;
+            justify-content: flex-start;
+            text-align: left;
+            padding: 6px 10px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            font-size: 0.9em;
+            /* 移除动画属性 */
+            opacity: 1;
+            transform: none;
+        }
+
+        .file-list .file-item:hover {
+            background: #e3f2fd;
+            transform: translateX(3px) scale(1.02);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        }
+        .file-list .file-item {
+            animation: none !important;
+            transition: none !important;
+        }
+        /* 其他样式保持不变... */
+        /* ===== 左侧导航栏操作按钮样式 ===== */
+        .folder-item {
+            position: relative;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            border-left: 3px solid transparent;
+        }
+
+        .folder-actions {
+            display: none;
+            position: absolute;
+            right: 10px;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .folder-item:hover .folder-actions {
+            display: flex;
+            opacity: 1;
+        }
+
+        .folder-action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ecf0f1;
+            width: 24px;
+            height: 24px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+
+        .folder-action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .folder-action-btn.edit:hover {
+            background: rgba(52, 152, 219, 0.3);
+            border-color: #3498db;
+        }
+
+        .folder-action-btn.delete:hover {
+            background: rgba(231, 76, 60, 0.3);
+            border-color: #e74c3c;
+        }
+
+        /* 侧边栏收起时的按钮样式 */
+        .sidebar.collapsed .folder-actions {
+            display: none !important;
+        }
+
+        .sidebar.collapsed .folder-item:hover .folder-actions {
+            display: none !important;
+        }
+
+        /* 文件夹名称区域，确保有足够的空间显示按钮 */
+        .folder-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 40px; /* 为按钮留出空间 */
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .folder-actions {
+                right: 5px;
+            }
+
+            .folder-action-btn {
+                width: 22px;
+                height: 22px;
+                font-size: 0.7rem;
+            }
+
+            .folder-name {
+                margin-right: 35px;
+            }
+        }
+        /* 危险按钮样式 */
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        /* 删除确认模态框样式 */
+        .modal-header h3[style*="color: #e74c3c"] {
+            font-weight: 600;
+        }
+        @media (max-width: 768px) {
+            .folder-actions {
+                position: static;
+                display: flex;
+                opacity: 1;
+                margin-left: auto;
+            }
+
+            .folder-item:hover .folder-actions {
+                display: flex;
+            }
+
+            .folder-name {
+                margin-right: 10px;
+            }
+
+            /* 移动端触摸优化 */
+            .folder-action-btn {
+                width: 28px;
+                height: 28px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 左侧导航栏 -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>文件管理系统</h2>
+            <button class="toggle-btn" id="toggleSidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        <div class="sidebar-content">
+            <ul class="folder-list" id="folderList">
+                <!-- 文件夹列表将通过AJAX加载 -->
+            </ul>
+        </div>
+        <div class="add-folder-btn" id="addRootFolder">
+            <i class="fas fa-plus"></i>
+            <span>新建文件夹</span>
+        </div>
+    </div>
+
+    <!-- 右侧内容区域 -->
+    <div class="content">
+        <div class="breadcrumb" id="breadcrumb">
+            <button class="back-btn" id="backBtn" style="display: none;">
+                <i class="fas fa-arrow-left"></i>返回上级
+            </button>
+            <div class="breadcrumb-item">
+                <a href="#" data-id="null">首页</a>
+            </div>
+        </div>
+
+        <div class="content-header">
+            <h2 class="content-title" id="contentTitle">首页</h2>
+            <div class="content-actions">
+                <!-- 添加视图控制按钮 -->
+                <div class="view-controls">
+                    <button class="btn btn-outline view-btn active" id="gridViewBtn" title="网格视图">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="btn btn-outline view-btn" id="listViewBtn" title="列表视图">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+
+                <button class="btn btn-primary" id="addFolderBtn">
+                    <i class="fas fa-folder-plus"></i>新建文件夹
+                </button>
+                <button class="btn btn-success" id="importExcelBtn">
+                    <i class="fas fa-file-import"></i>导入Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- 添加大小控制面板 -->
+        <div class="size-controls" id="sizeControls" style="display: none;">
+            <span class="size-label">图标大小:</span>
+            <input type="range" id="sizeSlider" min="80" max="200" value="180" class="size-slider">
+            <span class="size-value" id="sizeValue">180px</span>
+        </div>
+
+
+        <div class="content-body" id="contentBody">
+            <div class="empty-state">
+                <i class="fas fa-folder-open"></i>
+                <h3>暂无内容</h3>
+                <p>请选择左侧文件夹或上传新文件</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新建文件夹模态框 -->
+<div class="modal" id="folderModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">新建文件夹</h3>
+            <button class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="folderName">文件夹名称</label>
+                <input type="text" class="form-control" id="folderName" placeholder="请输入文件夹名称">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" id="cancelFolderBtn">取消</button>
+            <button class="btn btn-primary" id="saveFolderBtn">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 导入Excel模态框 -->
+<div class="modal" id="excelModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">导入Excel文件</h3>
+            <button class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="excelFile">选择Excel文件</label>
+                <input type="file" class="form-control" id="excelFile" accept=".xlsx, .xls">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" id="cancelExcelBtn">取消</button>
+            <button class="btn btn-success" id="saveExcelBtn">导入</button>
+        </div>
+    </div>
+</div>
+<script src="/data/js/downFile.js"></script>
+<script>
+    // 当前选中的文件夹ID
+    let currentFolderId = null;
+    // 面包屑导航数据
+    let breadcrumbData = [{id: null, name: '首页'}];
+    // 存储导航历史记录
+    let navigationHistory = [];
+
+    // DOM元素
+    const sidebar = document.querySelector('.sidebar');
+    const toggleSidebarBtn = document.getElementById('toggleSidebar');
+    const folderList = document.getElementById('folderList');
+    const contentTitle = document.getElementById('contentTitle');
+    const contentBody = document.getElementById('contentBody');
+    const breadcrumb = document.getElementById('breadcrumb');
+    const backBtn = document.getElementById('backBtn');
+    const addFolderBtn = document.getElementById('addFolderBtn');
+    const addRootFolderBtn = document.getElementById('addRootFolder');
+    const importExcelBtn = document.getElementById('importExcelBtn');
+    const folderModal = document.getElementById('folderModal');
+    const excelModal = document.getElementById('excelModal');
+
+    // 初始化页面
+    document.addEventListener('DOMContentLoaded', function() {
+        // 加载左侧导航数据
+        loadFolders();
+
+        // 绑定事件
+        toggleSidebarBtn.addEventListener('click', toggleSidebar);
+
+        addFolderBtn.addEventListener('click', () => showFolderModal('current'));
+        addRootFolderBtn.addEventListener('click', () => showFolderModal('root'));
+
+        importExcelBtn.addEventListener('click', () => showModal(excelModal));
+        backBtn.addEventListener('click', goBack);
+
+        // 关闭模态框
+        document.querySelectorAll('.close-btn, #cancelFolderBtn, #cancelExcelBtn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                folderModal.style.display = 'none';
+                excelModal.style.display = 'none';
+            });
+        });
+
+
+        // 保存文件夹
+        document.getElementById('saveFolderBtn').addEventListener('click', saveFolder);
+
+        // 导入Excel
+        document.getElementById('saveExcelBtn').addEventListener('click', importExcel);
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', (e) => {
+            if (e.target === folderModal) folderModal.style.display = 'none';
+            if (e.target === excelModal) excelModal.style.display = 'none';
+        });
+
+
+        // 新增：绑定模态框关闭事件
+        document.addEventListener('click', function(e) {
+            // 编辑模态框外部点击关闭
+            const editModal = document.getElementById('editFolderModal');
+            if (editModal && e.target === editModal) {
+                editModal.style.display = 'none';
+            }
+
+            // 删除模态框外部点击关闭
+            const deleteModal = document.getElementById('deleteFolderModal');
+            if (deleteModal && e.target === deleteModal) {
+                deleteModal.style.display = 'none';
+            }
+        });
+    });
+
+    // 显示文件夹模态框，并设置父级ID
+    function showFolderModal(parentType) {
+        // 设置隐藏字段标识父级类型
+        document.getElementById('folderModal').setAttribute('data-parent-type', parentType);
+        showModal(folderModal);
+    }
+
+    // 切换侧边栏显示/隐藏
+    function toggleSidebar() {
+        sidebar.classList.toggle('collapsed');
+    }
+
+    // 加载文件夹列表
+    function loadFolders() {
+        // 显示加载状态
+        folderList.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>加载中...</p></div>';
+
+        // AJAX请求获取文件夹数据
+        fetch('/ncy/topDirectory', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('网络响应不正常');
+                }
+                return response.json();
+            })
+            .then(data => {
+                renderFolderList(data);
+
+                // 页面加载完成后自动选择第一个目录
+                if (data.length > 0) {
+                    // 模拟点击第一个文件夹
+                    setTimeout(() => {
+                        const firstFolder = document.querySelector('.folder-item');
+                        if (firstFolder) {
+                            firstFolder.click();
+                        }
+                    }, 100);
+                }
+            })
+            .catch(error => {
+                console.error('加载文件夹列表失败:', error);
+                folderList.innerHTML = '<div class="error-state"><i class="fas fa-exclamation-circle"></i><p>加载失败，请重试</p></div>';
+            });
+    }
+
+    // 渲染文件夹列表
+    // 渲染文件夹列表
+    function renderFolderList(folders) {
+        folderList.innerHTML = '';
+
+        if (folders.length === 0) {
+            folderList.innerHTML = '<div class="empty-state"><i class="fas fa-folder-open"></i><p>暂无文件夹</p></div>';
+            return;
+        }
+
+        folders.forEach(folder => {
+            const li = document.createElement('li');
+            li.className = 'folder-item';
+            li.setAttribute('data-folder-id', folder.id);
+            li.innerHTML = `
+            <i class="fas ${folder.icon} folder-icon"></i>
+            <span class="folder-name">${folder.translate}</span>
+            <div class="folder-actions">
+                <button class="folder-action-btn download" title="下载"  data-folder-name="${folder.translate}" data-folder-id="${folder.id}">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="folder-action-btn edit" title="修改文件夹"  data-folder-id="${folder.id}">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="folder-action-btn delete" title="删除文件夹" data-folder-id="${folder.id}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+
+            // 文件夹点击事件
+            li.addEventListener('click', (e) => {
+                // 如果点击的是操作按钮，不触发文件夹选择
+                if (e.target.closest('.folder-action-btn')) {
+                    return;
+                }
+
+                // 移除所有active类
+                document.querySelectorAll('.folder-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                // 添加active类到当前项
+                li.classList.add('active');
+                // 加载文件夹内容
+                loadFolderContent(folder.id, folder.translate, folder.fatherid);
+            });
+
+            folderList.appendChild(li);
+        });
+
+        // 绑定操作按钮事件
+        bindFolderActionEvents();
+    }
+
+
+    // 绑定文件夹操作按钮事件
+    function bindFolderActionEvents() {
+        // 下载按钮事件
+        document.querySelectorAll('.folder-action-btn.download').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                // 获取文件夹信息
+                const folderId = this.getAttribute('data-folder-id');
+                const fileName = this.getAttribute('data-folder-name');
+                downloadMultipleFiles(folderId,fileName);
+
+            });
+        });
+
+        // 编辑按钮事件
+        document.querySelectorAll('.folder-action-btn.edit').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const folderId = this.getAttribute('data-folder-id');
+                editFolder(folderId);
+            });
+        });
+
+        // 删除按钮事件
+        document.querySelectorAll('.folder-action-btn.delete').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const folderId = this.getAttribute('data-folder-id');
+                deleteFolder(folderId);
+            });
+        });
+    }
+    // 编辑文件夹
+    function editFolder(folderId) {
+        // 获取文件夹信息
+        const folderItem = document.querySelector(`.folder-item[data-folder-id="${folderId}"]`);
+        const folderName = folderItem.querySelector('.folder-name').textContent;
+
+        // 显示编辑模态框
+        showEditFolderModal(folderId, folderName);
+    }
+
+    // 显示编辑文件夹模态框
+    function showEditFolderModal(folderId, currentName) {
+        // 创建或显示编辑模态框
+        let editModal = document.getElementById('editFolderModal');
+
+        if (!editModal) {
+            editModal = document.createElement('div');
+            editModal.id = 'editFolderModal';
+            editModal.className = 'modal';
+            editModal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">修改文件夹</h3>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="editFolderName">文件夹名称</label>
+                        <input type="text" class="form-control" id="editFolderName" placeholder="请输入文件夹名称">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" id="cancelEditBtn">取消</button>
+                    <button class="btn btn-primary" id="saveEditBtn">保存</button>
+                </div>
+            </div>
+        `;
+            document.body.appendChild(editModal);
+
+            // 绑定事件
+            editModal.querySelector('.close-btn').addEventListener('click', () => {
+                editModal.style.display = 'none';
+            });
+
+            editModal.querySelector('#cancelEditBtn').addEventListener('click', () => {
+                editModal.style.display = 'none';
+            });
+
+            editModal.querySelector('#saveEditBtn').addEventListener('click', saveFolderEdit);
+
+            // 点击外部关闭
+            editModal.addEventListener('click', (e) => {
+                if (e.target === editModal) {
+                    editModal.style.display = 'none';
+                }
+            });
+        }
+
+        // 设置当前值
+        document.getElementById('editFolderName').value = currentName;
+        editModal.setAttribute('data-folder-id', folderId);
+        editModal.style.display = 'flex';
+    }
+
+    // 保存文件夹修改
+    function saveFolderEdit() {
+        const editModal = document.getElementById('editFolderModal');
+        const folderId = editModal.getAttribute('data-folder-id');
+        const folderIdIcon = editModal.getAttribute('data-folder-icon');
+        const newName = document.getElementById('editFolderName').value.trim();
+
+        if (!newName) {
+            alert('请输入文件夹名称');
+            return;
+        }
+
+        if (!folderId) {
+            alert('文件夹ID不存在');
+            return;
+        }
+
+        // 显示加载状态
+        const saveBtn = document.getElementById('saveEditBtn');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>保存中...';
+        saveBtn.disabled = true;
+
+        // AJAX请求更新文件夹
+        fetch('/ncy/updateFolder', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                folderId: folderId,
+                newName: newName
+            })
+        })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    editModal.style.display = 'none';
+
+                    // 更新UI
+                    const folderItem = document.querySelector(`.folder-item[data-folder-id="${folderId}"]`);
+                    if (folderItem) {
+                        folderItem.querySelector('.folder-name').textContent = newName;
+                    }
+
+                    // 如果当前正在查看这个文件夹，更新标题
+                    if (currentFolderId == folderId) {
+                        contentTitle.textContent = newName;
+                        // 更新面包屑
+                        updateBreadcrumbUI();
+                    }
+
+                } else {
+                    alert('修改失败: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('修改文件夹失败:', error);
+                alert('修改失败，请重试');
+            })
+            .finally(() => {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            });
+    }
+
+    // 删除文件夹
+    function deleteFolder(folderId) {
+        const folderItem = document.querySelector(`.folder-item[data-folder-id="${folderId}"]`);
+        const folderName = folderItem.querySelector('.folder-name').textContent;
+
+        // 显示确认删除模态框
+        showDeleteConfirmModal(folderId, folderName);
+    }
+
+    // 显示删除确认模态框
+    function showDeleteConfirmModal(folderId, folderName) {
+        let deleteModal = document.getElementById('deleteFolderModal');
+
+        if (!deleteModal) {
+            deleteModal = document.createElement('div');
+            deleteModal.id = 'deleteFolderModal';
+            deleteModal.className = 'modal';
+            deleteModal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title" style="color: #e74c3c;">删除文件夹</h3>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="text-align: center; padding: 20px 0;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #e74c3c; margin-bottom: 15px;"></i>
+                        <h4 style="color: #e74c3c; margin-bottom: 10px;">确认删除</h4>
+                        <p>确定要删除文件夹 "<strong>${folderName}</strong>" 吗？</p>
+                        <p style="color: #7f8c8d; font-size: 0.9rem;">此操作将删除该文件夹及其所有子文件夹和文件，且不可恢复！</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" id="cancelDeleteBtn">取消</button>
+                    <button class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
+                </div>
+            </div>
+        `;
+            document.body.appendChild(deleteModal);
+
+            // 绑定事件
+            deleteModal.querySelector('.close-btn').addEventListener('click', () => {
+                deleteModal.style.display = 'none';
+            });
+
+            deleteModal.querySelector('#cancelDeleteBtn').addEventListener('click', () => {
+                deleteModal.style.display = 'none';
+            });
+
+            deleteModal.querySelector('#confirmDeleteBtn').addEventListener('click', confirmFolderDelete);
+        } else {
+            // 更新内容
+            deleteModal.querySelector('strong').textContent = folderName;
+        }
+
+        deleteModal.setAttribute('data-folder-id', folderId);
+        deleteModal.setAttribute('data-folder-name', folderName);
+        deleteModal.style.display = 'flex';
+    }
+
+    // 确认删除文件夹
+    function confirmFolderDelete() {
+        const deleteModal = document.getElementById('deleteFolderModal');
+        const folderId = deleteModal.getAttribute('data-folder-id');
+        const folderName = deleteModal.getAttribute('data-folder-name');
+
+        // 显示加载状态
+        const deleteBtn = document.getElementById('confirmDeleteBtn');
+        const originalText = deleteBtn.innerHTML;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>删除中...';
+        deleteBtn.disabled = true;
+
+        // AJAX请求删除文件夹
+        fetch('/ncy/deleteExcel', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                folderId: folderId,
+                fileType: "folder"
+
+            })
+        })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    deleteModal.style.display = 'none';
+
+                    // 从UI中移除文件夹项
+                    const folderItem = document.querySelector(`.folder-item[data-folder-id="${folderId}"]`);
+                    if (folderItem) {
+                        folderItem.remove();
+                    }
+
+                    // 如果当前正在查看被删除的文件夹，返回首页
+                    if (currentFolderId == folderId) {
+                        goToHome();
+                    }
+
+                    // 如果文件夹列表为空，显示空状态
+                    if (document.querySelectorAll('.folder-item').length === 0) {
+                        folderList.innerHTML = '<div class="empty-state"><i class="fas fa-folder-open"></i><p>暂无文件夹</p></div>';
+                    }
+
+                    goToHome();
+                } else {
+                    alert('删除失败: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('删除文件夹失败:', error);
+                alert('删除失败，请重试');
+            })
+            .finally(() => {
+                deleteBtn.innerHTML = originalText;
+                deleteBtn.disabled = false;
+            });
+    }
+
+    // 加载文件夹内容
+    function loadFolderContent(folderId, folderName, parentId) {
+        // 记录导航历史
+        if (currentFolderId !== null) {
+            navigationHistory.push({
+                id: currentFolderId,
+                name: contentTitle.textContent,
+                parentId: parentId
+            });
+        }
+
+        currentFolderId = folderId;
+
+        // 更新面包屑
+        updateBreadcrumb(folderId, folderName, parentId);
+
+        // 更新内容标题
+        contentTitle.textContent = folderName;
+
+        // 显示加载状态
+        contentBody.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>加载中...</p></div>';
+
+        // 更新返回按钮显示状态
+        updateBackButton();
+
+        // AJAX请求获取文件夹内容
+        fetch('/ncy/nextDirectory/contents', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ folderId: folderId })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('网络响应不正常');
+                }
+                return response.json();
+            })
+            .then(contents => {
+                renderFolderContents(contents);
+            })
+            .catch(error => {
+                console.error('加载文件夹内容失败:', error);
+                contentBody.innerHTML = '<div class="error-state"><i class="fas fa-exclamation-circle"></i><p>加载失败，请重试</p></div>';
+            });
+    }
+
+
+    // 更新面包屑导航
+    function updateBreadcrumb(folderId, folderName, parentId = null) {
+        // 如果是根目录，重置面包屑
+        if (folderId === null) {
+            breadcrumbData = [{id: null, name: '首页'}];
+        } else {
+            // 构建面包屑路径
+            breadcrumbData = buildBreadcrumbPath(folderId, folderName, parentId);
+        }
+
+        let html = '';
+
+        // 添加返回按钮（非首页时显示）
+        if (folderId !== null) {
+            html += `<button class="back-btn" id="backBtn">
+                <i class="fas fa-arrow-left"></i>返回上级
+            </button>`;
+        }
+
+        breadcrumbData.forEach((item, index) => {
+            if (index > 0) {
+                html += `<div class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></div>`;
+            }
+
+            if (index === breadcrumbData.length - 1) {
+                // 最后一项不可点击
+                html += `<div class="breadcrumb-item">${item.name}</div>`;
+            } else {
+                html += `<div class="breadcrumb-item"><a href="#" data-id="${item.id}">${item.name}</a></div>`;
+            }
+        });
+
+        breadcrumb.innerHTML = html;
+
+        // 重新绑定返回按钮事件
+        const newBackBtn = document.getElementById('backBtn');
+        if (newBackBtn) {
+            newBackBtn.addEventListener('click', goBack);
+        }
+
+        // 绑定面包屑点击事件
+        breadcrumb.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const id = this.getAttribute('data-id');
+                if (id === 'null') {
+                    // 返回首页
+                    goToHome();
+                } else {
+                    // 通过AJAX查询指定文件夹
+                    loadFolderById(parseInt(id));
+                }
+            });
+        });
+    }
+
+    // 通过ID加载文件夹
+    function loadFolderById(folderId) {
+        // 显示加载状态
+        contentBody.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>加载中...</p></div>';
+        const folder = findFolderInfo(folderId);
+        loadFolderContent(folder.id, folder.translate, folder.fatherid);
+    }
+
+    // 构建面包屑路径
+    function buildBreadcrumbPath(folderId, folderName, parentId) {
+        const path = [];
+
+        // 添加当前文件夹
+        path.unshift({id: folderId, name: folderName});
+
+        // 递归查找父级文件夹
+        let currentParentId = parentId;
+        while (currentParentId !== null) {
+            // 通过AJAX实时查询父级文件夹信息
+            const parentFolder = findFolderInfo(currentParentId);
+
+            if (parentFolder && parentFolder.id) {
+                path.unshift({id: parentFolder.id, name: parentFolder.translate});
+                currentParentId = parentFolder.fatherid;
+            } else {
+                break;
+            }
+        }
+
+        // 添加首页
+        path.unshift({id: null, name: '首页'});
+
+        return path;
+    }
+
+    function findFolderInfo(folderId) {
+        let result = [];
+        $.ajax({
+            url: '/ncy/getDirectoryInfoById/',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({folderId: folderId}),
+            dataType: 'json',
+            timeout: 10000,
+            async: false,
+            success: function(response) {
+                if (!Array.isArray(response) || response.length === 0) {
+                    console.error('返回的数据不是数组格式或为空');
+                }else{
+                    console.log('获取文件夹信息成功:', response[0]);
+                    result = response[0];
+                }
+
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX请求失败:', error);
+                return null;
+            }
+        });
+        return result;
+    }
+
+    // 返回上级目录
+    function goBack() {
+        const folder = findFolderInfo(currentFolderId);
+        if (!folder.fatherid) {
+            goToHome();
+            return;
+        } else {
+            const fatherFolder = findFolderInfo(folder.fatherid);
+            // 显示加载状态
+            contentBody.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>加载中...</p></div>';
+
+            // 使用AJAX请求获取上级目录内容
+            fetch('/ncy/nextDirectory/contents', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ folderId: folder.fatherid })
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('网络响应不正常');
+                    }
+                    return response.json();
+                })
+                .then(contents => {
+                    // 更新当前文件夹ID
+                    currentFolderId = fatherFolder.id;
+                    loadFolderContent(fatherFolder.id,fatherFolder.translate,fatherFolder.fatherid);
+
+                    // 更新返回按钮显示状态
+                    updateBackButton();
+                })
+                .catch(error => {
+                    console.error('加载上级目录失败:', error);
+                    contentBody.innerHTML = '<div class="error-state"><i class="fas fa-exclamation-circle"></i><p>加载失败，请重试</p></div>';
+                });
+        }
+    }
+
+    // 更新面包屑UI
+    function updateBreadcrumbUI() {
+        let html = '';
+
+        breadcrumbData.forEach((item, index) => {
+            if (index > 0) {
+                html += `<div class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></div>`;
+            }
+
+            if (index === breadcrumbData.length - 1) {
+                // 最后一项不可点击
+                html += `<div class="breadcrumb-item">${item.name}</div>`;
+            } else {
+                html += `<div class="breadcrumb-item"><a href="#" data-id="${item.id}">${item.name}</a></div>`;
+            }
+        });
+        // 添加返回按钮（非首页时显示）
+        if (currentFolderId !== null) {
+            html += `<button class="back-btn" id="backBtn">
+                    <i class="fas fa-arrow-left"></i>返回上级
+                </button>`;
+        }
+        breadcrumb.innerHTML = html;
+
+        // 重新绑定事件
+        const newBackBtn = document.getElementById('backBtn');
+        if (newBackBtn) {
+            newBackBtn.addEventListener('click', goBack);
+        }
+
+        breadcrumb.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const id = this.getAttribute('data-id');
+                if (id === 'null') {
+                    goToHome();
+                } else {
+                    loadFolderById(parseInt(id));
+                }
+            });
+        });
+    }
+
+    // 前往首页
+    function goToHome() {
+        currentFolderId = null;
+        contentTitle.textContent = '首页';
+        contentBody.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-folder-open"></i>
+                <h3>暂无内容</h3>
+                <p>请选择左侧文件夹或上传新文件</p>
+            </div>
+        `;
+        breadcrumbData = [{id: null, name: '首页'}];
+        updateBreadcrumbUI();
+        navigationHistory = [];
+        updateBackButton();
+
+        // 移除所有文件夹的active状态
+        document.querySelectorAll('.folder-item').forEach(item => {
+            item.classList.remove('active');
+        });
+
+        // 重新加载左侧文件夹列表以确保数据最新
+        loadFolders();
+    }
+
+    // 更新返回按钮显示状态
+    function updateBackButton() {
+        const backBtn = document.getElementById('backBtn');
+        if (backBtn) {
+            backBtn.style.display = (currentFolderId !== null && navigationHistory.length > 0) ? 'flex' : 'none';
+        }
+    }
+
+    // 显示模态框
+    function showModal(modal) {
+        modal.style.display = 'flex';
+    }
+
+    // 保存文件夹
+    function saveFolder() {
+        var parentType = document.getElementById('folderModal').getAttribute('data-parent-type');
+        //parentType==current 二级目录     parentType==root 一级目录
+        const folderName = document.getElementById('folderName').value;
+        if (!folderName) {
+            alert('请输入文件夹名称');
+            return;
+        }
+
+        // AJAX请求创建文件夹
+        $.ajax({
+            url: '/ncy/createFolder/',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                name: folderName,
+                parentType: parentType,
+                parentId: currentFolderId
+            }),
+            dataType: 'json',
+            timeout: 10000,
+            async: false,
+            success: function (response) {
+                folderModal.style.display = 'none';
+                document.getElementById('folderName').value = '';
+
+                const folderEntity = findFolderInfo(currentFolderId);
+                // 刷新当前内容
+                if (parentType == "current") {
+                    loadFolderContent(currentFolderId, contentTitle.textContent,folderEntity.fatherid);
+                } else {
+                    // 如果是根目录，重新加载左侧列表
+                    loadFolders();
+                }
+            },
+            error: function (xhr, status, error) {
+
+            }
+        });
+
+
+    }
+// 导入Excel - 优化版本
+function importExcel() {
+    const fileInput = document.getElementById('excelFile');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert('请选择Excel文件');
+        return;
+    }
+
+    // 显示加载状态
+    const importBtn = document.getElementById('saveExcelBtn');
+    const originalText = importBtn.innerHTML;
+    importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>导入中...';
+    importBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('parentId', currentFolderId || '');
+
+    fetch('/ncy/importExcel', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                excelModal.style.display = 'none';
+                document.getElementById('excelFile').value = '';
+
+                // 刷新当前内容
+                if (currentFolderId) {
+                    const folderEntity = findFolderInfo(currentFolderId);
+                    loadFolderContent(currentFolderId, contentTitle.textContent,folderEntity.fatherid);
+                }
+            } else {
+                alert('导入失败: ' + result.message);
+            }
+        })
+        .catch(error => {
+            console.error('导入失败:', error);
+            alert('导入失败，请重试');
+        })
+        .finally(() => {
+            // 恢复按钮状态
+            importBtn.innerHTML = originalText;
+            importBtn.disabled = false;
+        });
+}
+
+
+
+    // 在现有JavaScript代码中添加以下功能
+
+    // 新增全局变量
+    let currentView = 'grid'; // 'grid' 或 'list'
+    let currentItemSize = 180;
+
+    // 在DOM元素声明部分添加
+    const gridViewBtn = document.getElementById('gridViewBtn');
+    const listViewBtn = document.getElementById('listViewBtn');
+    const sizeControls = document.getElementById('sizeControls');
+    const sizeSlider = document.getElementById('sizeSlider');
+    const sizeValue = document.getElementById('sizeValue');
+
+    // 在初始化部分添加事件绑定
+    document.addEventListener('DOMContentLoaded', function() {
+        // 现有代码...
+
+        // 新增视图控制事件
+        gridViewBtn.addEventListener('click', () => switchView('grid'));
+        listViewBtn.addEventListener('click', () => switchView('list'));
+        sizeSlider.addEventListener('input', updateItemSize);
+
+        // 初始化视图
+        initViewControls();
+    });
+
+
+
+
+    // 在JavaScript代码中添加以下函数
+
+    // 绑定文件项点击事件
+    function bindFileItemEvents() {
+        const fileItems = document.querySelectorAll('.file-item');
+        fileItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const type = this.getAttribute('data-type');
+                const fatherid = this.getAttribute('data-fatherid');
+
+                if (type === 'folder') {
+                    const folderName = this.querySelector('.file-name').textContent;
+                    loadFolderContent(parseInt(id), folderName, fatherid ? parseInt(fatherid) : null);
+                } else {
+                    const folderName2 = this.querySelector('.file-name').textContent;
+                    window.open("/ncy/openExcel?fileId="+id+"&folderName="+folderName2);
+                }
+            });
+        });
+    }
+
+
+    // 修改 convertToListView 函数，移除动画设置
+    function convertToListView() {
+        const fileList = document.querySelector('.file-list');
+        if (!fileList) return;
+
+        const items = fileList.querySelectorAll('.file-item');
+        items.forEach((item, index) => {
+            // 删除动画延迟设置
+            // item.style.animationDelay = `${index * 0.05}s`;
+
+            if (!item.querySelector('.file-info')) {
+                const fileName = item.querySelector('.file-name');
+                const fileSize = getFileSizeText(item);
+                const fileDate = getFileDateText();
+                const fileType = item.getAttribute('data-type') === 'folder' ? '文件夹' : 'Excel文件';
+
+                const fileInfo = document.createElement('div');
+                fileInfo.className = 'file-info';
+                fileInfo.innerHTML = `
+                <div class="file-name">${fileName.textContent}</div>
+                <div class="file-meta">
+                    <span class="file-size">${fileSize}</span>
+                    <span class="file-date">${fileDate}</span>
+                    <span class="file-type">${fileType}</span>
+                </div>
+            `;
+
+                fileName.remove();
+                item.appendChild(fileInfo);
+
+                // 添加操作按钮
+                const fileActions = document.createElement('div');
+                fileActions.className = 'file-actions';
+                fileActions.innerHTML = `
+                <button class="action-btn" title="下载"><i class="fas fa-download"></i></button>
+                <button class="action-btn" title="重命名"><i class="fas fa-edit"></i></button>
+                <button class="action-btn" title="删除"><i class="fas fa-trash"></i></button>
+            `;
+                item.appendChild(fileActions);
+
+                // 绑定操作按钮事件
+                bindActionEvents(fileActions, item);
+            }
+        });
+    }
+
+    // 修改 updateContentView 函数，确保没有动画
+    function updateContentView() {
+        const fileGrid = contentBody.querySelector('.file-grid');
+        const fileList = contentBody.querySelector('.file-list');
+
+        if (!fileGrid) return;
+
+        if (currentView === 'grid') {
+            fileGrid.style.display = 'grid';
+            if (fileList) fileList.style.display = 'none';
+        } else {
+            fileGrid.style.display = 'none';
+            if (fileList) {
+                fileList.style.display = 'flex';
+                // 直接转换，不添加动画
+                convertToListView();
+            }
+        }
+    }
+
+
+    // 更新项目大小（包括字体大小）
+    function updateItemSize() {
+        currentItemSize = parseInt(sizeSlider.value);
+        sizeValue.textContent = currentItemSize + 'px';
+
+        // 更新CSS变量
+        document.documentElement.style.setProperty('--item-size', currentItemSize + 'px');
+
+        // 更新所有文件项的大小
+        const fileItems = document.querySelectorAll('.file-grid .file-item');
+        fileItems.forEach(item => {
+            item.style.width = currentItemSize + 'px';
+            item.style.height = currentItemSize + 'px';
+        });
+
+        // 更新图标大小
+        const fileIcons = document.querySelectorAll('.file-grid .file-icon');
+        fileIcons.forEach(icon => {
+            icon.style.fontSize = (currentItemSize * 0.3) + 'px';
+        });
+
+        // 更新字体大小 - 根据项目大小动态调整
+        updateFontSizes(currentItemSize);
+
+        // 保存用户偏好
+        localStorage.setItem('fileItemSize', currentItemSize.toString());
+    }
+
+    // 根据项目大小动态调整字体大小
+    function updateFontSizes(itemSize) {
+        // 计算基础字体大小（基于180px为基准，字体大小12px）
+        const baseFontSize = 12; // 180px时的基准字体大小
+        const scaleFactor = itemSize / 180; // 相对于基准大小的比例
+
+        // 动态计算字体大小
+        const fontSize = Math.max(10, Math.min(16, baseFontSize * scaleFactor)); // 限制在10-16px范围内
+
+        // 更新文件名字体大小
+        const fileNames = document.querySelectorAll('.file-grid .file-name');
+        fileNames.forEach(name => {
+            name.style.fontSize = fontSize + 'px';
+        });
+
+        // 如果有其他需要调整的文本元素，也可以在这里添加
+        const fileItems = document.querySelectorAll('.file-grid .file-item');
+        fileItems.forEach(item => {
+            item.style.fontSize = (fontSize * 0.9) + 'px'; // 项目整体字体稍微小一点
+        });
+
+        // 更新图标与文字的间距
+        const fileIcons = document.querySelectorAll('.file-grid .file-icon');
+        fileIcons.forEach(icon => {
+            icon.style.marginBottom = (fontSize * 0.8) + 'px'; // 根据字体大小调整间距
+        });
+    }
+
+    // 在初始化时调用字体大小调整
+    function initViewControls() {
+        // 从localStorage读取用户偏好设置
+        const savedView = localStorage.getItem('fileView');
+        const savedSize = localStorage.getItem('fileItemSize');
+        const savedSort = localStorage.getItem('fileSort');
+
+        if (savedView) {
+            switchView(savedView);
+        }
+
+        if (savedSize) {
+            currentItemSize = parseInt(savedSize);
+            sizeSlider.value = currentItemSize;
+            sizeValue.textContent = currentItemSize + 'px';
+            updateItemSize(); // 初始化时也更新字体大小
+        }
+
+        if (savedSort) {
+            currentSort = savedSort;
+        }
+    }
+
+    // 修改渲染文件夹内容函数，确保字体大小正确应用
+    function renderFolderContents(contents) {
+        if (contents.length === 0) {
+            contentBody.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-folder-open"></i>
+                <h3>文件夹为空</h3>
+                <p>请添加文件或文件夹</p>
+            </div>
+        `;
+            return;
+        }
+
+        let gridHtml = '<div class="file-grid">';
+        let listHtml = '<div class="file-list" style="display: none;">';
+
+        contents.forEach(item => {
+            const iconClass = item.icon === 'fa-folder' ? 'fa-folder' : 'fa-file-excel';
+
+            // 网格视图项
+            gridHtml += `
+            <div class="file-item" data-id="${item.id}" data-type="${item.icon === 'fa-folder' ? 'folder' : 'file'}" data-fatherid="${item.fatherid}">
+                <i class="fas ${iconClass} file-icon"></i>
+                <div class="file-name">${item.translate}</div>
+            </div>
+        `;
+
+            // 列表视图项
+            listHtml += `
+            <div class="file-item" data-id="${item.id}" data-type="${item.icon === 'fa-folder' ? 'folder' : 'file'}" data-fatherid="${item.fatherid}">
+                <i class="fas ${iconClass} file-icon"></i>
+                <div class="file-info">
+                    <div class="file-name">${item.translate}</div>
+                </div>
+                <div class="file-actions">
+                    <button class="action-btn" title="下载"><i class="fas fa-download"></i></button>
+                    <button class="action-btn" title="重命名"><i class="fas fa-edit"></i></button>
+                    <button class="action-btn" title="删除"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+        });
+
+        gridHtml += '</div>';
+        listHtml += '</div>';
+
+        contentBody.innerHTML = gridHtml + listHtml;
+
+        // 立即应用当前的大小设置（包括字体大小）
+        if (currentView === 'grid') {
+            updateItemSize();
+        }
+
+        // 更新内容显示
+        updateContentView();
+
+        // 绑定文件项点击事件
+        bindFileItemEvents();
+
+        // 绑定操作按钮事件
+        bindActionEvents();
+    }
+
+    // 绑定操作按钮事件
+    function bindActionEvents() {
+        const actionButtons = document.querySelectorAll('.action-btn');
+        actionButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const title = this.getAttribute('title');
+                const fileItem = this.closest('.file-item');
+                const fileName = fileItem.querySelector('.file-name').textContent;
+                const fileId = fileItem.dataset.id;
+                const fileType = fileItem.dataset.type;
+
+                switch(title) {
+                    case '下载':
+                        if(fileType=='folder'){
+                            downloadMultipleFiles(fileId,fileName);
+                        }else{
+                            downloadExcel(fileId,fileName);
+                        }
+                        break;
+                    case '重命名':
+                        // alert(`重命名文件: ${fileName}`);
+                        showEditFolderModal(fileId, fileName);
+                        break;
+                    case '删除':
+                        deleteExcel(fileId,fileType);
+                        break;
+                }
+            });
+        });
+    }
+
+    function deleteExcel(folderId,fileType){
+        // AJAX请求获取文件夹内容
+        fetch('/ncy/deleteExcel/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ folderId: folderId ,fileType:fileType})
+        })
+            .then(response => response.json())
+            .then(result => {
+                if (!result.success)
+                    alert('删除失败: ' + result.message);
+                else
+                    loadFolderById(currentFolderId);
+            })
+            .catch(error => {
+                console.error('删除失败:', error);
+                alert('删除失败，请重试');
+            })
+
+    }
+    // 在切换视图时也确保字体正确
+    function switchView(view) {
+        currentView = view;
+
+        // 更新按钮状态
+        gridViewBtn.classList.toggle('active', view === 'grid');
+        listViewBtn.classList.toggle('active', view === 'list');
+
+        // 显示/隐藏大小控制
+        if (view === 'grid') {
+            sizeControls.style.display = 'flex';
+            sizeControls.classList.add('show');
+            // 切换到网格视图时重新应用字体大小设置
+            setTimeout(() => updateItemSize(), 10);
+        } else {
+            sizeControls.style.display = 'none';
+            sizeControls.classList.remove('show');
+        }
+
+        // 更新内容显示
+        updateContentView();
+
+        // 保存用户偏好
+        localStorage.setItem('fileView', view);
+    }
+    // 辅助函数
+    function getFileSizeText(item) {
+        const type = item.getAttribute('data-type');
+        return type === 'folder' ? '文件夹' : (Math.random() * 5 + 1).toFixed(1) + ' MB';
+    }
+</script>
+
+
+</body>
+</html>
